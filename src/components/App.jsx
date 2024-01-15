@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import s from './App.module.css';
@@ -9,89 +9,85 @@ import Button from './Button/Button';
 import Loader from './Loader/Loader';
 import { Modal } from './Modal/Modal';
 
-export default class App extends Component {
-  state = {
-    query: '',
-    page: 1,
-    photos: [],
-    totalPages: 1,
-    isLoader: false,
-    showModal: false,
-    modalContent: {},
-  };
+const App = () => {
+  const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [photos, setPhotos] = useState([]);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isLoader, setIsLoader] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [modalContent, setModalContent] = useState({});
 
-  async componentDidUpdate(_, prevState) {
-    const { query, page } = this.state;
-    if (prevState.query !== query || prevState.page !== page) {
+  useEffect(() => {
+    if (!query) return;
+    const getData = async () => {
       try {
-        this.setState({ isLoader: true });
+        setIsLoader(true);
         const data = await getPhotos(query, page);
+        setPhotos(prev =>
+          page === 1 ? [...data.results] : [...prev, ...data.results]
+        );
 
-        this.setState(prev => ({
-          photos: [...prev.photos, ...data.results],
-        }));
-        if (prevState.totalPages !== data.total_pages) {
-          this.setState({ totalPages: data.total_pages });
-        }
+        setTotalPages(data.total_pages);
       } catch (e) {
         console.log(e);
         toast.error('Sorry, problem connection to server!');
       } finally {
-        this.setState({ isLoader: false });
+        setIsLoader(false);
       }
-    }
-  }
+    };
+    getData();
+  }, [query, page]);
 
-  handleFormSubmit = query => {
-    this.setState({ query, page: 1, photos: [] });
+  const handleFormSubmit = query => {
+    setQuery(query);
+    setPage(1);
+    setPhotos([]);
+    setTotalPages(1);
   };
 
-  handleClickButton = e => {
-    this.setState(prev => ({
-      page: prev.page + 1,
-    }));
+  const handleClickButton = e => {
+    setPage(prev => prev + 1);
   };
 
-  handleToggleModal = () => {
-    this.setState(prev => ({ showModal: !prev.showModal }));
+  const handleToggleModal = () => {
+    setShowModal(prev => !prev);
   };
 
-  handleOpenModal = img => {
-    this.setState({ modalContent: img, showModal: true, isLoader: true });
+  const handleOpenModal = img => {
+    setModalContent(img);
+    setShowModal(true);
+    setIsLoader(true);
   };
 
-  handleToggleLoader = () => {
-    this.setState(prev => ({ isLoader: !prev.isLoader }));
+  const handleToggleLoader = () => {
+    setIsLoader(prev => !prev);
   };
 
-  render() {
-    const { photos, page, totalPages, isLoader, showModal, modalContent } =
-      this.state;
-    return (
-      <div className={s.App}>
-        <Searchbar onSubmit={this.handleFormSubmit} />
-        {photos && (
-          <ImageGallery photos={photos} openModal={this.handleOpenModal} />
-        )}
-        {totalPages > 1 && page < totalPages && !isLoader ? (
-          <Button onClick={this.handleClickButton} />
-        ) : (
-          ''
-        )}
-        {isLoader && <Loader />}
-        {showModal && (
-          <Modal close={this.handleToggleModal}>
-            {isLoader && <Loader color="white" />}
-            <img
-              className={s.ModalContent}
-              src={modalContent.src}
-              alt={modalContent.alt}
-              onLoad={this.handleToggleLoader}
-            />
-          </Modal>
-        )}
-        <ToastContainer />
-      </div>
-    );
-  }
-}
+  return (
+    <div className={s.App}>
+      <Searchbar onSubmit={handleFormSubmit} />
+      {photos && <ImageGallery photos={photos} openModal={handleOpenModal} />}
+      {totalPages > 1 && page < totalPages && !isLoader ? (
+        <Button onClick={handleClickButton} />
+      ) : (
+        ''
+      )}
+      {isLoader && <Loader />}
+      {showModal && (
+        <Modal close={handleToggleModal}>
+          {isLoader && <Loader color="white" />}
+          <img
+            className={s.ModalContent}
+            src={modalContent.src}
+            alt={modalContent.alt}
+            onLoad={handleToggleLoader}
+          />
+        </Modal>
+      )}
+      <ToastContainer />
+    </div>
+  );
+};
+
+export default App;
